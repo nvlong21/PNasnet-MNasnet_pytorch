@@ -1,5 +1,5 @@
 # PNASNet
-PyTorch implementation of [PNASNet-5](https://arxiv.org/1712.00559).
+PyTorch implementation of [PNASNet-5](https://arxiv.org/pdf/1712.00559.pdf).
 On the ImageNet classification task, the model achieves PnasNet-Mobile:74.2% top-1 accuracy and 91.9% top-5 accuracy. With PnasNet-Large: 82.9 top-1 accuracy and 96.2 top- 5 accuracy.
 # MNASNet
 A PyTorch implementation of [MnasNet](https://arxiv.org/abs/1807.11626). 
