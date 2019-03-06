@@ -76,10 +76,36 @@ class InvertedResidual(nn.Module):
             return x + self.conv(x)
         else:
             return self.conv(x)
+class InvertedResidual_SE(nn.Module):
+    def __init__(self, inp, oup, stride, expand_ratio, kernel):
+        super(InvertedResidual_SE, self).__init__()
+        self.stride = stride
+        assert stride in [1, 2]
 
+        self.use_res_connect = self.stride == 1 and inp == oup
+
+        self.conv = nn.Sequential(
+            # pw
+            nn.Conv2d(inp, inp * expand_ratio, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(inp * expand_ratio),
+            nn.ReLU6(inplace=True),
+            # dw
+            nn.Conv2d(inp * expand_ratio, inp * expand_ratio, kernel, stride, kernel // 2, groups=inp * expand_ratio, bias=False),
+            nn.BatchNorm2d(inp * expand_ratio),
+            nn.ReLU6(inplace=True),
+            # pw-linear
+            nn.Conv2d(inp * expand_ratio, oup, 1, 1, 0, bias=False),
+            nn.BatchNorm2d(oup),
+            SEModule(oup, 2)
+        )
+    def forward(self, x):
+        if self.use_res_connect:
+            return x + self.conv(x)
+        else:
+            return self.conv(x)
 
 class MnasNet(nn.Module):
-    def __init__(self, n_class=512, input_size=224, width_mult=1.):
+    def __init__(self, n_class=1000, input_size=224, width_mult=1., se_modul = False):
         super(MnasNet, self).__init__()
 
         # setting of inverted residual blocks
@@ -96,6 +122,9 @@ class MnasNet(nn.Module):
         assert input_size % 32 == 0
         input_channel = int(32 * width_mult)
         self.last_channel = int(1280 * width_mult) if width_mult > 1.0 else 1280
+        Inverted_Residual = InvertedResidual
+        if se_modul:
+            Inverted_Residual = InvertedResidual_SE
 
         # building first two layer
         self.features = [Conv_3x3(3, input_channel, 2), SepConv_3x3(input_channel, 16)]
@@ -106,9 +135,9 @@ class MnasNet(nn.Module):
             output_channel = int(c * width_mult)
             for i in range(n):
                 if i == 0:
-                    self.features.append(InvertedResidual(input_channel, output_channel, s, t, k))
+                    self.features.append(Inverted_Residual(input_channel, output_channel, s, t, k))
                 else:
-                    self.features.append(InvertedResidual(input_channel, output_channel, 1, t, k))
+                    self.features.append(Inverted_Residual(input_channel, output_channel, 1, t, k))
                 input_channel = output_channel
 
         # building last several layers
@@ -147,6 +176,6 @@ class MnasNet(nn.Module):
                 m.weight.data.normal_(0, 0.01)
                 m.bias.data.zero_()
 if __name__ == '__main__':
-    net = MnasNet()
+    net = MnasNet(se_modul = True)
     torchsummary.summary(net.cuda(), (3, 112, 112))
     # print(y)
